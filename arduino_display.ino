@@ -38,10 +38,31 @@ Adafruit_HX8357 tft = Adafruit_HX8357(TFT_CS, TFT_DC, TFT_RST);
 // SoftSPI - note that on some processors this might be *faster* than hardware SPI!
 //Adafruit_HX8357 tft = Adafruit_HX8357(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST, MISO);
 
+uint16_t width = tft.width();
+uint16_t height = tft.height();
+
 int buttonState = 0;
 int prevButtonState = 0;
 const int buttonPin = 2;
 int screenMode = 0;
+
+unsigned int previousMillis = 0;
+const int interval = 100;
+
+int RPM = 5000;
+int prev_RPM = 5000;
+
+int WATER_TEMP = 50;
+int prev_WATER_TEMP = 50;
+
+int SPEED = 120;
+int prev_SPEED = 120;
+
+int OIL_TEMP = 50;
+int prev_OIL_TEMP = 50;
+
+int OIL_PRES = 50;
+int prev_OIL_PRES = 50;
 
 void setup() {
   Serial.begin(9600);
@@ -68,52 +89,173 @@ void setup() {
   tft.setRotation(1);
   tft.fillScreen(HX8357_BLACK);
 
-  //drawDriverScreen();
-  //drawPowertrainScreen();
-  //drawSuspensionScreen();
-}
+  Serial.print("Width: 0x"); Serial.println(width, DEC);
+  Serial.print("Height: 0x"); Serial.println(height, DEC);
 
+  drawDriverScreen();
+}
 
 void loop(void) {
   buttonState = digitalRead(buttonPin);
   // check if the pushbutton is pressed. If it is, the buttonState is HIGH:
   if (buttonState == HIGH) {
     if (prevButtonState == 0) {
+      tft.fillScreen(HX8357_BLACK);
       switch (screenMode) {
         case 0:
           screenMode = 1;
+          drawPowertrainScreen();
           break;
         case 1:
           screenMode = 2;
+          drawSuspensionScreen();
           break;
         case 2:
+          screenMode = 3;
+          drawAlert("holy craaappp");
+          break;
+        case 3:
           screenMode = 0;
+          drawDriverScreen();
           break;
         default:
           break;
       }
-      tft.fillScreen(HX8357_BLACK);
     }
     prevButtonState = 1;
   } else {
     prevButtonState = 0;
   }
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    switch (screenMode) {
+      case 0:
+        RPM = abs(RPM + random(-20, 21));
+        WATER_TEMP = abs(WATER_TEMP + random(-3, 4));
+        SPEED = abs(SPEED + random(-10, 11));
+        OIL_TEMP = abs(OIL_TEMP + random(-5, 6));
+        OIL_PRES = abs(OIL_PRES + random(-5, 6));
+        updateDriverScreen();
+        prev_RPM = RPM;
+        prev_WATER_TEMP = WATER_TEMP;
+        prev_SPEED = SPEED;
+        prev_OIL_TEMP = OIL_TEMP;
+        prev_OIL_PRES = OIL_PRES;
+        break;
+      case 1:
+        break;
+      case 2:
+        break;
+      case 3:
+        break;
+      default:
+        break;
+    }
+  }
+}
 
-  Serial.print("Mode: 0x"); Serial.println(screenMode, HEX);
-
-  switch (screenMode) {
-    case 0:
-      drawDriverScreen();
+void replaceNum(int curr, int prev, int x, int y, int numSize) {
+  int digitCurr[6];
+  int digitPrev[6];
+  int og_curr = curr;
+  int og_prev = prev;
+  int currNumOffset = 0;
+  int prevNumOffset = 0;
+  int numWidth;
+  switch (numSize) {
+    case 3:
+      numWidth = 18;
       break;
-    case 1:
-      drawPowertrainScreen();
-      break;
-    case 2:
-      drawSuspensionScreen();
+    case 6:
+      numWidth = 36;
       break;
     default:
       break;
   }
+
+  tft.setTextSize(numSize);
+
+  //Convert curr num to array
+  for (int i = 5; i >= 0; i--) {
+    digitCurr[i] = curr % 10;
+    curr /= 10;
+  }
+
+  //Convert prev num to array
+  for (int i = 5; i >= 0; i--) {
+    digitPrev[i] = prev % 10;
+    prev /= 10;
+  }
+
+  bool currDoing = true;
+  bool prevDoing = true;
+  for(int i = 0;(i < 6); i++) {
+    if(digitCurr[i] == 0 && currDoing)
+      currNumOffset++;
+    else 
+      currDoing = false;
+    if(digitPrev[i] == 0 && prevDoing)
+      prevNumOffset++;
+    else 
+      prevDoing = false;
+  }
+//  int currNumOffsetWidth = (currNumOffset) * numWidth;
+//  int prevNumOffsetWidth = (prevNumOffset) * numWidth;
+
+  //Proper clearing
+  tft.setTextColor(HX8357_BLACK);
+  int diff = prevNumOffset - currNumOffset;
+  for(int i = 0; i < prevNumOffset; i++) {
+    tft.setCursor(x + (i * numWidth), y);
+    tft.setTextColor(HX8357_BLACK);
+    tft.print(0, DEC);
+  }
+  
+  //Printing
+  for(int i = 0; i < 6; i++) {
+    Serial.print(digitPrev[i]);
+  }
+  Serial.print(" -> ");
+  for(int i = 0; i < 6; i++) {
+    Serial.print(digitCurr[i]);
+  }
+  Serial.print(" -> ");
+  Serial.print(currNumOffset);  
+  Serial.print(" -> ");
+  Serial.print(prevNumOffset);  
+  Serial.println();
+  
+  //Code to only clear changed number
+  for (int i = 0; i < 6; i++) {
+    if (digitCurr[i] != digitPrev[i]) {
+      tft.setCursor(x + (i * numWidth), y);
+      tft.setTextColor(HX8357_BLACK);
+      tft.print(digitPrev[i], DEC);
+      tft.setCursor(x + (i * numWidth), y);
+      tft.setTextColor(HX8357_WHITE);
+      tft.print(digitCurr[i], DEC);
+    }
+  }
+}
+
+void updateDriverScreen() {
+  replaceNum(RPM, prev_RPM, 120, 200, 6);
+  replaceNum(WATER_TEMP, prev_WATER_TEMP, 0, 30, 3);
+  replaceNum(SPEED, prev_SPEED, 0, 110, 3);
+  replaceNum(OIL_TEMP, prev_OIL_TEMP, 330, 30, 3);
+  replaceNum(OIL_PRES, prev_OIL_PRES, 330, 110, 3);
+
+  // textSize(3) => width = 18
+  // textSize(6) => width = 36
+}
+
+void drawAlert(String message) {
+  tft.fillScreen(HX8357_BLACK);
+  tft.fillRect(30, 30, 420, 260, HX8357_RED);
+  tft.setTextSize(5);
+  tft.setCursor(50, 140);
+  tft.println(message);
 }
 
 void drawDriverScreen() {
@@ -134,11 +276,6 @@ void drawDriverScreen() {
   tft.setTextSize(4);
   tft.setCursor(200, 150);
   tft.println("RPM");
-
-  tft.setTextSize(6);
-  tft.setCursor(160, 200);
-  tft.println("12345");
-
 }
 
 void drawPowertrainScreen() {
