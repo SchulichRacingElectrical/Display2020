@@ -1,18 +1,3 @@
-/***************************************************
-  This is our library for the Adafruit HX8357D Breakout
-  ----> http://www.adafruit.com/products/2050
-
-  Check out the links above for our tutorials and wiring diagrams
-  These displays use SPI to communicate, 4 or 5 pins are required to
-  interface (RST is optional)
-  Adafruit invests time and resources providing this open source code,
-  please support Adafruit and open-source hardware by purchasing
-  products from Adafruit!
-
-  Written by Limor Fried/Ladyada for Adafruit Industries.
-  MIT license, all text above must be included in any redistribution
- ****************************************************/
-
 #include <SPI.h>
 #include "Adafruit_GFX.h"
 #include "Adafruit_HX8357.h"
@@ -38,8 +23,8 @@ Adafruit_HX8357 tft = Adafruit_HX8357(TFT_CS, TFT_DC, TFT_RST);
 // SoftSPI - note that on some processors this might be *faster* than hardware SPI!
 //Adafruit_HX8357 tft = Adafruit_HX8357(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST, MISO);
 
-uint16_t width = tft.width();
-uint16_t height = tft.height();
+uint16_t width = tft.height();
+uint16_t height = tft.width();
 
 int buttonState = 0;
 int prevButtonState = 0;
@@ -63,6 +48,51 @@ int prev_OIL_TEMP = 50;
 
 int OIL_PRES = 50;
 int prev_OIL_PRES = 50;
+
+int MAP = 120;
+int prev_MAP = 120;
+
+int AFR = 120;
+int prev_AFR = 120;
+
+int EXH = 120;
+int prev_EXH = 120;
+
+int WATER_PRES_1 = 50;
+int prev_WATER_PRES_1 = 50;
+
+int WATER_PRES_2 = 50;
+int prev_WATER_PRES_2 = 50;
+
+int FAN_1 = 50;
+int prev_FAN_1 = 50;
+
+int FAN_2 = 50;
+int prev_FAN_2 = 50;
+
+int RR = 50;
+int prev_RR = 50;
+
+int RL = 50;
+int prev_RL = 50;
+
+int FR = 50;
+int prev_FR = 50;
+
+int FL = 50;
+int prev_FL = 50;
+
+int FB = 50;
+int prev_FB = 50;
+
+int RB = 50;
+int prev_RB = 50;
+
+int FBP = 50;
+int prev_FBP = 50;
+
+int STR_ANG = 30;
+int prev_STR_ANG = 30;
 
 void setup() {
   Serial.begin(9600);
@@ -100,7 +130,6 @@ void loop(void) {
   // check if the pushbutton is pressed. If it is, the buttonState is HIGH:
   if (buttonState == HIGH) {
     if (prevButtonState == 0) {
-      tft.fillScreen(HX8357_BLACK);
       switch (screenMode) {
         case 0:
           screenMode = 1;
@@ -129,33 +158,184 @@ void loop(void) {
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
+    test_change_all_curr();
     switch (screenMode) {
       case 0:
-        RPM = abs(RPM + random(-20, 21));
-        WATER_TEMP = abs(WATER_TEMP + random(-3, 4));
-        SPEED = abs(SPEED + random(-10, 11));
-        OIL_TEMP = abs(OIL_TEMP + random(-5, 6));
-        OIL_PRES = abs(OIL_PRES + random(-5, 6));
         updateDriverScreen();
-        prev_RPM = RPM;
-        prev_WATER_TEMP = WATER_TEMP;
-        prev_SPEED = SPEED;
-        prev_OIL_TEMP = OIL_TEMP;
-        prev_OIL_PRES = OIL_PRES;
         break;
       case 1:
+        updatePowertrainScreen();
         break;
       case 2:
+        updateSuspensionScreen();
         break;
       case 3:
         break;
       default:
         break;
     }
+    test_change_all_prev();
   }
 }
 
-void replaceNum(int curr, int prev, int x, int y, int numSize) {
+void updateDriverScreen() {
+  replaceNum(RPM       , prev_RPM       , 120, 200, 6, true);
+  replaceNum(WATER_TEMP, prev_WATER_TEMP, 0  , 30 , 3, true);
+  replaceNum(SPEED     , prev_SPEED     , 0  , 110, 3, true);
+  replaceNum(OIL_TEMP  , prev_OIL_TEMP  , 330, 30 , 3, true);
+  replaceNum(OIL_PRES  , prev_OIL_PRES  , 330, 110, 3, true);
+}
+
+void updatePowertrainScreen() {
+  replaceNum(WATER_TEMP  , prev_WATER_TEMP  , 300, 5,   2, false);
+  replaceNum(OIL_TEMP    , prev_OIL_TEMP    , 300, 35,  2, true);
+  replaceNum(OIL_PRES    , prev_OIL_PRES    , 300, 65,  2, false);
+  replaceNum(MAP         , prev_MAP         , 300, 95,  2, true);
+  replaceNum(AFR         , prev_AFR         , 300, 125, 2, false);
+  replaceNum(EXH         , prev_EXH         , 300, 155, 2, true);
+  replaceNum(RPM         , prev_RPM         , 300, 185, 2, false);
+  replaceNum(WATER_PRES_1, prev_WATER_PRES_1, 300, 215, 2, true);
+  replaceNum(WATER_PRES_2, prev_WATER_PRES_2, 300, 245, 2, false);
+  replaceNum(FAN_1       , prev_FAN_1       , 300, 275, 2, true);
+  replaceNum(FAN_2       , prev_FAN_2       , 300, 305, 2, false);
+}
+
+void updateSuspensionScreen(){
+  replaceNum(RR     , prev_RR     , 300, 10 , 3, false);
+  replaceNum(RL     , prev_RL     , 300, 50 , 3, true);
+  replaceNum(FL     , prev_FL     , 300, 90 , 3, false);
+  replaceNum(FR     , prev_FR     , 300, 130, 3, true);
+  replaceNum(RB     , prev_RB     , 300, 170, 3, false);
+  replaceNum(FB     , prev_FB     , 300, 210, 3, true);
+  replaceNum(FBP    , prev_FBP    , 300, 250, 3, false);
+  replaceNum(STR_ANG, prev_STR_ANG, 300, 290, 3, true);
+}
+
+void drawAlert(String message) {
+  tft.fillScreen(HX8357_BLACK);
+  tft.fillScreen(HX8357_BLACK);
+  tft.fillRect(30, 30, 420, 260, HX8357_RED);
+  tft.setTextSize(5);
+  tft.setCursor(50, 140);
+  tft.println(message);
+}
+
+void drawDriverScreen() {
+  tft.fillScreen(HX8357_BLACK);
+  tft.setTextColor(HX8357_WHITE);
+  tft.setTextSize(3);
+  tft.setCursor(0, 0);
+  tft.println("WATER TEMP");
+
+  tft.setCursor(0, 80);
+  tft.println("SPEED");
+
+  tft.setCursor(330, 0);
+  tft.println("OIL TEMP");
+
+  tft.setCursor(330, 80);
+  tft.println("OIL PRES");
+
+  tft.setTextSize(4);
+  tft.setCursor(200, 150);
+  tft.println("RPM");
+}
+
+void drawPowertrainScreen() {
+  tft.setTextSize(2);
+  bool isBlack = true;
+  for (int i = 0; i < height; i += 30) {
+    if (isBlack)
+      tft.fillRect(0, i, width, 30, HX8357_WHITE);
+    else
+      tft.fillRect(0, i, width, 30, HX8357_BLACK);
+
+    isBlack = !isBlack;
+  }
+
+  tft.setTextColor(HX8357_BLACK);
+
+  tft.setCursor(5, 5);
+  tft.println("WATER TEMP:");
+
+  tft.setCursor(5, 65);
+  tft.println("OIL PRES:");
+
+  tft.setCursor(5, 125);
+  tft.println("AFR:");
+
+  tft.setCursor(5, 185);
+  tft.println("RPM:");
+
+  tft.setCursor(5, 245);
+  tft.println("WATER PRES 2:");
+
+  tft.setCursor(5, 302);
+  tft.println("FAN 2:");
+
+  tft.setTextColor(HX8357_WHITE);
+
+  tft.setCursor(5, 35);
+  tft.println("OIL TEMP:");
+
+  tft.setCursor(5, 95);
+  tft.println("MAP:");
+
+  tft.setCursor(5, 155);
+  tft.println("EXH:");
+
+  tft.setCursor(5, 215);
+  tft.println("WATER PRES 1:");
+
+  tft.setCursor(5, 275);
+  tft.println("FAN 1:");
+
+}
+
+void drawSuspensionScreen() {
+  tft.setTextSize(3);
+  bool isBlack = true;
+  for (int i = 0; i < height; i += 40) {
+    if (isBlack)
+      tft.fillRect(0, i, width, 40, HX8357_WHITE);
+    else
+      tft.fillRect(0, i, width, 40, HX8357_BLACK);
+
+    isBlack = !isBlack;
+  }
+
+  tft.setTextColor(HX8357_BLACK);
+
+  tft.setCursor(5, 10);
+  tft.println("RR:");
+
+  tft.setCursor(5, 90);
+  tft.println("FR:");
+
+  tft.setCursor(5, 170);
+  tft.println("FB:");
+
+  tft.setCursor(5, 250);
+  tft.println("FBP:");
+
+  tft.setTextColor(HX8357_WHITE);
+
+  tft.setCursor(5, 50);
+  tft.println("RL:");
+
+  tft.setCursor(5, 130);
+  tft.println("FL:");
+
+  tft.setCursor(5, 210);
+  tft.println("RB:");
+
+  tft.setCursor(5, 290);
+  tft.println("STR ANG:");
+
+}
+
+
+void replaceNum(int curr, int prev, int x, int y, int numSize, int isBlack) {
   int digitCurr[6];
   int digitPrev[6];
   int og_curr = curr;
@@ -164,6 +344,9 @@ void replaceNum(int curr, int prev, int x, int y, int numSize) {
   int prevNumOffset = 0;
   int numWidth;
   switch (numSize) {
+    case 2:
+      numWidth = 12;
+      break;
     case 3:
       numWidth = 18;
       break;
@@ -188,158 +371,108 @@ void replaceNum(int curr, int prev, int x, int y, int numSize) {
     prev /= 10;
   }
 
+  //Get proper digit offsets
   bool currDoing = true;
   bool prevDoing = true;
-  for(int i = 0;(i < 6); i++) {
-    if(digitCurr[i] == 0 && currDoing)
+  for (int i = 0; (i < 6); i++) {
+    if (digitCurr[i] == 0 && currDoing)
       currNumOffset++;
-    else 
+    else
       currDoing = false;
-    if(digitPrev[i] == 0 && prevDoing)
+    if (digitPrev[i] == 0 && prevDoing)
       prevNumOffset++;
-    else 
+    else
       prevDoing = false;
   }
-//  int currNumOffsetWidth = (currNumOffset) * numWidth;
-//  int prevNumOffsetWidth = (prevNumOffset) * numWidth;
+  //  int currNumOffsetWidth = (currNumOffset) * numWidth;
+  //  int prevNumOffsetWidth = (prevNumOffset) * numWidth;
 
-  //Proper clearing
-  tft.setTextColor(HX8357_BLACK);
-  int diff = prevNumOffset - currNumOffset;
-  for(int i = 0; i < prevNumOffset; i++) {
-    tft.setCursor(x + (i * numWidth), y);
+  //Proper clearing setup
+  if (isBlack)
     tft.setTextColor(HX8357_BLACK);
+  else
+    tft.setTextColor(HX8357_WHITE);
+  int diff = prevNumOffset - currNumOffset;
+  for (int i = 0; i < prevNumOffset; i++) {
+    tft.setCursor(x + (i * numWidth), y);
     tft.print(0, DEC);
   }
-  
+
   //Printing
-  for(int i = 0; i < 6; i++) {
-    Serial.print(digitPrev[i]);
-  }
-  Serial.print(" -> ");
-  for(int i = 0; i < 6; i++) {
-    Serial.print(digitCurr[i]);
-  }
-  Serial.print(" -> ");
-  Serial.print(currNumOffset);  
-  Serial.print(" -> ");
-  Serial.print(prevNumOffset);  
-  Serial.println();
-  
+  //  for(int i = 0; i < 6; i++) {
+  //    Serial.print(digitPrev[i]);
+  //  }
+  //  Serial.print(" -> ");
+  //  for(int i = 0; i < 6; i++) {
+  //    Serial.print(digitCurr[i]);
+  //  }
+  //  Serial.print(" -> ");
+  //  Serial.print(currNumOffset);
+  //  Serial.print(" -> ");
+  //  Serial.print(prevNumOffset);
+  //  Serial.println();
+
   //Code to only clear changed number
   for (int i = 0; i < 6; i++) {
     if (digitCurr[i] != digitPrev[i]) {
       tft.setCursor(x + (i * numWidth), y);
-      tft.setTextColor(HX8357_BLACK);
+      if (isBlack)
+        tft.setTextColor(HX8357_BLACK);
+      else
+        tft.setTextColor(HX8357_WHITE);
       tft.print(digitPrev[i], DEC);
       tft.setCursor(x + (i * numWidth), y);
-      tft.setTextColor(HX8357_WHITE);
+      if (isBlack)
+        tft.setTextColor(HX8357_WHITE);
+      else
+        tft.setTextColor(HX8357_BLACK);
       tft.print(digitCurr[i], DEC);
     }
   }
 }
 
-void updateDriverScreen() {
-  replaceNum(RPM, prev_RPM, 120, 200, 6);
-  replaceNum(WATER_TEMP, prev_WATER_TEMP, 0, 30, 3);
-  replaceNum(SPEED, prev_SPEED, 0, 110, 3);
-  replaceNum(OIL_TEMP, prev_OIL_TEMP, 330, 30, 3);
-  replaceNum(OIL_PRES, prev_OIL_PRES, 330, 110, 3);
-
-  // textSize(3) => width = 18
-  // textSize(6) => width = 36
+void test_change_all_curr() {
+  RPM = abs(RPM + random(-20, 21));
+  WATER_TEMP = abs(WATER_TEMP + random(-3, 4));
+  SPEED = abs(SPEED + random(-10, 11));
+  OIL_TEMP = abs(OIL_TEMP + random(-5, 6));
+  OIL_PRES = abs(OIL_PRES + random(-5, 6));
+  MAP = abs(MAP + random(-8, 9));
+  AFR = abs(AFR + random(-8, 9));
+  EXH = abs(EXH + random(-8, 9));
+  WATER_PRES_1 = abs(WATER_PRES_1 + random(-3, 4));
+  WATER_PRES_2 = abs(WATER_PRES_2 + random(-3, 4));
+  FAN_1 = abs(FAN_1 + random(-3, 4));
+  FAN_2 = abs(FAN_2 + random(-3, 4));
+  RR = abs(RR + random(-3, 4));
+  RL = abs(RL + random(-3, 4));
+  FR = abs(FR + random(-3, 4));
+  FL = abs(FL + random(-3, 4));
+  FB = abs(FB + random(-3, 4));
+  RB = abs(RB + random(-3, 4));
+  FBP = abs(FBP + random(-5, 6));
+  STR_ANG = abs(STR_ANG + random(-3, 4));
 }
 
-void drawAlert(String message) {
-  tft.fillScreen(HX8357_BLACK);
-  tft.fillRect(30, 30, 420, 260, HX8357_RED);
-  tft.setTextSize(5);
-  tft.setCursor(50, 140);
-  tft.println(message);
-}
-
-void drawDriverScreen() {
-  tft.setTextColor(HX8357_WHITE);
-  tft.setTextSize(3);
-  tft.setCursor(0, 0);
-  tft.println("WATER TEMP");
-
-  tft.setCursor(0, 80);
-  tft.println("SPEED");
-
-  tft.setCursor(330, 0);
-  tft.println("OIL TEMP");
-
-  tft.setCursor(330, 80);
-  tft.println("OIL PRES");
-
-  tft.setTextSize(4);
-  tft.setCursor(200, 150);
-  tft.println("RPM");
-}
-
-void drawPowertrainScreen() {
-  tft.setTextSize(2);
-
-  tft.setCursor(0, 0);
-  tft.println("WATER TEMP:");
-
-  tft.setCursor(0, 30);
-  tft.println("OIL TEMP:");
-
-  tft.setCursor(0, 60);
-  tft.println("OIL PRES:");
-
-  tft.setCursor(0, 90);
-  tft.println("MAP:");
-
-  tft.setCursor(0, 120);
-  tft.println("AFR:");
-
-  tft.setCursor(0, 150);
-  tft.println("EXH:");
-
-  tft.setCursor(0, 180);
-  tft.println("RPM:");
-
-  tft.setCursor(0, 210);
-  tft.println("WATER PRES 1:");
-
-  tft.setCursor(0, 240);
-  tft.println("WATER PRES 2:");
-
-  tft.setCursor(0, 270);
-  tft.println("FAN 1:");
-
-  tft.setCursor(0, 300);
-  tft.println("FAN 2:");
-
-}
-
-void drawSuspensionScreen() {
-  tft.setTextSize(3);
-
-  tft.setCursor(0, 0);
-  tft.println("RR:");
-
-  tft.setCursor(0, 40);
-  tft.println("RL:");
-
-  tft.setCursor(0, 80);
-  tft.println("FR:");
-
-  tft.setCursor(0, 120);
-  tft.println("FL:");
-
-  tft.setCursor(0, 160);
-  tft.println("FB:");
-
-  tft.setCursor(0, 200);
-  tft.println("RB:");
-
-  tft.setCursor(0, 240);
-  tft.println("FBP:");
-
-  tft.setCursor(0, 280);
-  tft.println("STR ANG:");
+void test_change_all_prev() {
+  prev_RPM = RPM;
+  prev_WATER_TEMP = WATER_TEMP;
+  prev_SPEED = SPEED;
+  prev_OIL_TEMP = OIL_TEMP;
+  prev_OIL_PRES = OIL_PRES;
+  prev_MAP = MAP;
+  prev_AFR = AFR;
+  prev_EXH = EXH;
+  prev_WATER_PRES_1 = WATER_PRES_1;
+  prev_WATER_PRES_2 = WATER_PRES_2;
+  prev_FAN_1 = FAN_1;
+  prev_FAN_2 = FAN_2;
+  prev_RR = RR;
+  prev_RL = RL;
+  prev_FR = FR;
+  prev_FL = FL;
+  prev_FB = FB;
+  prev_RB = RB;
+  prev_FBP = FBP;
+  prev_STR_ANG = STR_ANG;
 }
