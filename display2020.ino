@@ -1,6 +1,19 @@
 #include <SPI.h>
+#include <mcp_can.h>
 #include "Adafruit_GFX.h"
 #include "Adafruit_HX8357.h"
+
+/* GENERAL COMMENTS
+ * 
+ * Using the 3.5" 320x480 display
+ * 
+ */
+
+// the cs pin of the version after v1.1 is default to D9
+// v0.9b and v1.0 is default D10
+//const int SPI_CS_PIN = 10;
+
+//MCP_CAN CAN(SPI_CS_PIN);                                    // Set CS pin
 
 // These are 'flexible' lines that can be changed
 #define TFT_CS 10
@@ -22,6 +35,11 @@
 
 // Use hardware SPI (on Uno, #13, #12, #11) and the above for CS/DC
 Adafruit_HX8357 tft = Adafruit_HX8357(TFT_CS, TFT_DC, TFT_RST);
+
+//CAN bus parameters
+unsigned char len = 0;
+unsigned char buf[8];
+unsigned long canId;
 
 // SoftSPI - note that on some processors this might be *faster* than hardware SPI!
 //Adafruit_HX8357 tft = Adafruit_HX8357(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST, MISO);
@@ -45,65 +63,71 @@ int prev_TIME_MINUTE = 88;
 int TIME_SECOND = 88;
 int prev_TIME_SECOND = 88;
 
+int BATT_VOLT = 12;       //Change to include 1 decimal place
+int prev_BATT_VOLT = 0;  //Change to include 1 decimal place
+
+char GEAR = 'N';
+char prev_GEAR = '0';
+
 int RPM = 5000;
-int prev_RPM = 5000;
+int prev_RPM = 0;
 
 int WATER_TEMP = 50;
-int prev_WATER_TEMP = 50;
+int prev_WATER_TEMP = 0;
 
 int SPEED = 120;
-int prev_SPEED = 120;
+int prev_SPEED = 0;
 
 int OIL_TEMP = 50;
-int prev_OIL_TEMP = 50;
+int prev_OIL_TEMP = 0;
 
 int OIL_PRES = 50;
-int prev_OIL_PRES = 50;
+int prev_OIL_PRES = 0;
 
 int MAP = 120;
-int prev_MAP = 120;
+int prev_MAP = 0;
 
 int AFR = 120;
-int prev_AFR = 120;
+int prev_AFR = 0;
 
-int EXH = 120;
-int prev_EXH = 120;
+int EXH_TEMP = 120;
+int prev_EXH_TEMP = 0;
 
 int WATER_PRES_1 = 50;
-int prev_WATER_PRES_1 = 50;
+int prev_WATER_PRES_1 = 0;
 
 int WATER_PRES_2 = 50;
-int prev_WATER_PRES_2 = 50;
+int prev_WATER_PRES_2 = 0;
 
 int FAN_1 = 50;
-int prev_FAN_1 = 50;
+int prev_FAN_1 = 0;
 
 int FAN_2 = 50;
-int prev_FAN_2 = 50;
+int prev_FAN_2 = 0;
 
 int RR = 50;
-int prev_RR = 50;
+int prev_RR = 0;
 
 int RL = 50;
-int prev_RL = 50;
+int prev_RL = 0;
 
 int FR = 50;
-int prev_FR = 50;
+int prev_FR = 0;
 
 int FL = 50;
-int prev_FL = 50;
+int prev_FL = 0;
 
 int FB = 50;
-int prev_FB = 50;
+int prev_FB = 0;
 
 int RB = 50;
-int prev_RB = 50;
+int prev_RB = 0;
 
 int FBP = 50;
-int prev_FBP = 50;
+int prev_FBP = 0;
 
 int STR_ANG = 30;
-int prev_STR_ANG = 30;
+int prev_STR_ANG = 999;
 
 void setup() {
   Serial.begin(9600);
@@ -135,9 +159,12 @@ void setup() {
   Serial.print("Height: 0x"); Serial.println(height, DEC);
 
   drawDriverScreen();
+
+  //CANinit();
 }
 
 void loop(void) {
+  //CANrecieve();
   buttonState = digitalRead(SWTICH_BUTTON_PIN);
   // check if the pushbutton is pressed. If it is, the buttonState is LOW:
   if (buttonState == LOW) {
@@ -195,17 +222,86 @@ void loop(void) {
   }
 }
 
+/*
+void CANinit() {
+    Serial.begin(115200);
+
+    while (CAN_OK != CAN.begin(CAN_500KBPS))              // init can bus : baudrate = 500k
+    {
+        Serial.println("CAN BUS Shield init fail");
+        Serial.println("Init CAN BUS Shield again");
+        delay(100);
+    }
+    Serial.println("CAN BUS Shield init ok!");
+}
+*/
+
+/*
+void CANrecieve() {
+    if(CAN_MSGAVAIL == CAN.checkReceive())            // check if data coming
+    {
+        CAN.readMsgBuf(&len, buf);    // read data,  len: data length, buf: data buf
+
+        canId = CAN.getCanId();
+        
+        Serial.println("-----------------------------");
+        Serial.print("Get data from ID: 0x");
+        Serial.println(canId, HEX);
+
+        for(int i = 0; i<len; i++)    // print the data
+        {
+            Serial.print(buf[i], HEX);
+            Serial.print("\t");
+        }
+        Serial.println();
+    }
+}
+*/
+
+void drawDivides(){
+  tft.drawLine(160, 0, 160, 320, WHITE); //Vertical Line Left
+  tft.drawLine(320, 0, 320, 320, WHITE); //Vertical Line Right
+
+  /* Horizontal Lines Numbering
+   *  1   1   1  
+   *      4
+   *  2       5
+   *  3       6
+   */
+  tft.drawLine(0, 100, 480, 100, WHITE); //Horizontal Line 1
+  tft.drawLine(0, 170, 160, 170, WHITE); //Horizontal Line 2
+  tft.drawLine(0, 240, 160, 240, WHITE); //Horizontal Line 3
+  tft.drawLine(160, 170, 320, 170, WHITE); //Horizontal Line 4
+  tft.drawLine(320, 170, 480, 170, WHITE); //Horizontal Line 5
+  tft.drawLine(320, 240, 480, 240, WHITE); //Horizontal Line 6
+}
+
 void updateDriverScreen() {
-  replaceNum(RPM       , prev_RPM       , 120, 200, 6, true);
-  replaceNum(WATER_TEMP, prev_WATER_TEMP, 0  , 30 , 3, true);
-  replaceNum(SPEED     , prev_SPEED     , 0  , 110, 3, true);
-  replaceNum(OIL_TEMP  , prev_OIL_TEMP  , 330, 30 , 3, true);
-  replaceNum(OIL_PRES  , prev_OIL_PRES  , 330, 110, 3, true);
+  /*
+   * CHECKLIST
+   * 
+   * Make sure the values are associated with the correct labels. The numbers update and the
+   * labels are in different functions.
+   */
+  drawDivides();
+  //Left Column
+  replaceNum(OIL_TEMP  , prev_OIL_TEMP  , 0  , 30 , 3, true);
+  //replaceNum(RPM     , prev_RPM       , 150, 120, 5, true); //FIX: Problem with the RPM Numbers
+  //replaceNum(BATT_VOLT , prev_BATT_VOLT , 0  , 120, 3, true); //Change to include the decimal place
+  //replaceNum(OIL_PRES  , prev_OIL_PRES  , 0  , 190, 3, true);
+  //replaceNum(EXH_TEMP  , prev_EXH_TEMP  , 0  , 260, 3, true);
+
+  //Right Column
+  replaceNum(WATER_TEMP, prev_WATER_TEMP, 330, 30 , 3, true);
+  //replaceNum(SPEED     , prev_SPEED     , 0  , 110, 3, true);
+  //replaceNum(OIL_PRES  , prev_OIL_PRES  , 330, 110, 3, true);
+  replaceChar(GEAR     , prev_GEAR      , 210, 0  , 12);
+  
 
   updateTime();
   
-  replaceNum(TIME_SECOND, prev_TIME_SECOND, 180, 295, 3, true);
-  replaceNum(TIME_MINUTE, prev_TIME_MINUTE, 140, 295, 3, true);
+  //replaceNum(TIME_SECOND, prev_TIME_SECOND, 180, 295, 3, true);
+  //replaceNum(TIME_MINUTE, prev_TIME_MINUTE, 140, 295, 3, true);
 }
 
 void updateTime() {
@@ -224,7 +320,7 @@ void updatePowertrainScreen() {
   replaceNum(OIL_PRES    , prev_OIL_PRES    , 300, 65,  2, false);
   replaceNum(MAP         , prev_MAP         , 300, 95,  2, true);
   replaceNum(AFR         , prev_AFR         , 300, 125, 2, false);
-  replaceNum(EXH         , prev_EXH         , 300, 155, 2, true);
+  replaceNum(EXH_TEMP    , prev_EXH_TEMP    , 300, 155, 2, true);
   replaceNum(RPM         , prev_RPM         , 300, 185, 2, false);
   replaceNum(WATER_PRES_1, prev_WATER_PRES_1, 300, 215, 2, true);
   replaceNum(WATER_PRES_2, prev_WATER_PRES_2, 300, 245, 2, false);
@@ -256,24 +352,61 @@ void drawDriverScreen() {
   tft.fillScreen(HX8357_BLACK);
   tft.setTextColor(HX8357_WHITE);
   tft.setTextSize(3);
+
   tft.setCursor(0, 0);
-  tft.println("WATER TEMP");
-
-  tft.setCursor(0, 80);
-  tft.println("SPEED");
-
-  tft.setCursor(330, 0);
   tft.println("OIL TEMP");
 
-  tft.setCursor(330, 80);
-  tft.println("OIL PRES");
+  tft.setCursor(330, 0);
+  tft.println("WTR TEMP");
 
-  tft.setCursor(0, 295);
-  tft.println("LAPTIME:");
+  //Second Row
+  tft.setTextSize(2);
+  tft.setCursor(0, 125);
+  tft.println("BATT");
 
-  tft.setTextSize(4);
-  tft.setCursor(200, 150);
-  tft.println("RPM");
+  tft.setCursor(330, 110);
+  tft.println("WTR");
+  tft.setCursor(330, 130);
+  tft.println("PUMP");
+  tft.setCursor(400, 110);
+  tft.println("L   R");
+
+  //Third Row
+  tft.setCursor(0, 180);
+  tft.println("OIL");
+  tft.setCursor(0, 200);
+  tft.println("PRES");
+  
+  tft.setCursor(330, 180);
+  tft.println("FUEL");
+  tft.setCursor(330, 200);
+  tft.println("PUMP");
+
+  //Fourth Row
+  tft.setCursor(0, 270);
+  tft.println("EXHT");
+  tft.setCursor(0, 290);
+  tft.println("TEMP");
+  
+  tft.setCursor(330, 270);
+  tft.println("FAN");
+  tft.setCursor(400, 250);
+  tft.println("L   R");
+
+
+  //IGNORE BELOW FOR NOW
+  //tft.setCursor(0, 80);
+  //tft.println("SPEED");
+
+  //tft.setCursor(330, 80);
+  //tft.println("OIL PRES");
+
+  //tft.setCursor(0, 295);
+  //tft.println("LAPTIME:");
+
+  //tft.setTextSize(4);
+  //tft.setCursor(200, 150);
+  //tft.println("RPM");
 }
 
 void drawPowertrainScreen() {
@@ -369,8 +502,15 @@ void drawSuspensionScreen() {
 
 }
 
+void replaceChar(char curr, char prev, uint16_t x, uint16_t y, uint16_t fontSize){
+  if(curr != prev)
+  {
+    tft.drawChar(x, y, curr, WHITE, BLACK, fontSize);
+  }
+}
 
 void replaceNum(int curr, int prev, int x, int y, int numSize, int isBlack) {
+  //FIX: Different font sizes that aren't 3 or 6 are bunched together
   int digitCurr[6];
   int digitPrev[6];
   int og_curr = curr;
@@ -473,7 +613,7 @@ void test_change_all_curr() {
   OIL_PRES = abs(OIL_PRES + random(-5, 6));
   MAP = abs(MAP + random(-8, 9));
   AFR = abs(AFR + random(-8, 9));
-  EXH = abs(EXH + random(-8, 9));
+  EXH_TEMP = abs(EXH_TEMP + random(-8, 9));
   WATER_PRES_1 = abs(WATER_PRES_1 + random(-3, 4));
   WATER_PRES_2 = abs(WATER_PRES_2 + random(-3, 4));
   FAN_1 = abs(FAN_1 + random(-3, 4));
@@ -496,7 +636,7 @@ void test_change_all_prev() {
   prev_OIL_PRES = OIL_PRES;
   prev_MAP = MAP;
   prev_AFR = AFR;
-  prev_EXH = EXH;
+  prev_EXH_TEMP = EXH_TEMP;
   prev_WATER_PRES_1 = WATER_PRES_1;
   prev_WATER_PRES_2 = WATER_PRES_2;
   prev_FAN_1 = FAN_1;
