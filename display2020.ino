@@ -7,6 +7,11 @@
  * 
  * Using the 3.5" 320x480 display
  * 
+ * TODO: Make the limits for warnings nice
+ * 
+ * Known Errors: Digits are on a blackground because when digits changed a black version is drawn over the previous
+   *             Fixing this should also make the warning transistions smoother for some values
+ * 
  */
 
 // the cs pin of the version after v1.1 is default to D9
@@ -27,7 +32,7 @@
 #define GREEN    0x07E0
 #define CYAN     0x07FF
 #define MAGENTA  0xF81F
-#define YELLOW   0xFFE0
+#define YELLOW   0xF6A2
 #define WHITE    0xFFFF
 
 #define SWTICH_BUTTON_PIN 2
@@ -63,8 +68,16 @@ int prev_TIME_MINUTE = 88;
 int TIME_SECOND = 88;
 int prev_TIME_SECOND = 88;
 
-int BATT_VOLT = 12;       //Change to include 1 decimal place
+int BATT_VOLT = 50;       //Change to include 1 decimal place
 int prev_BATT_VOLT = 0;  //Change to include 1 decimal place
+
+bool WATER_FAN_L = false;
+bool WATER_FAN_R = false;
+
+bool FAN_L = false;
+bool FAN_R = false;
+
+bool FUEL_PUMP = false;
 
 char GEAR = 'N';
 char prev_GEAR = '0';
@@ -72,13 +85,13 @@ char prev_GEAR = '0';
 int RPM = 5000;
 int prev_RPM = 0;
 
-int WATER_TEMP = 50;
+int WATER_TEMP = 90;
 int prev_WATER_TEMP = 0;
 
-int SPEED = 120;
+int SPEED = 50;
 int prev_SPEED = 0;
 
-int OIL_TEMP = 50;
+int OIL_TEMP = 90;
 int prev_OIL_TEMP = 0;
 
 int OIL_PRES = 50;
@@ -147,7 +160,7 @@ void setup() {
   x = tft.readcommand8(HX8357_RDDSDR);
   Serial.print("Self Diagnostic: 0x"); Serial.println(x, HEX);
 
-  Serial.println(F("Benchmark                Time (microseconds)"));
+  //Serial.println(F("Benchmark                Time (microseconds)"));
 
   pinMode(SWTICH_BUTTON_PIN, INPUT_PULLUP);
   pinMode(LAPTIME_BUTTON_PIN, INPUT_PULLUP);
@@ -276,6 +289,311 @@ void drawDivides(){
   tft.drawLine(320, 240, 480, 240, WHITE); //Horizontal Line 6
 }
 
+bool OIL_TEMP_soft_warning_cleared = false;
+bool OIL_TEMP_soft_warning_drawn = false;
+bool OIL_TEMP_hard_warning_cleared = true;
+bool OIL_TEMP_hard_warning_drawn = false;
+
+bool WATER_TEMP_soft_warning_cleared = false;
+bool WATER_TEMP_soft_warning_drawn = false;
+bool WATER_TEMP_hard_warning_cleared = true;
+bool WATER_TEMP_hard_warning_drawn = false;
+
+bool BATT_VOLT_soft_warning_cleared = false;
+bool BATT_VOLT_soft_warning_drawn = false;
+bool BATT_VOLT_hard_warning_cleared = true;
+bool BATT_VOLT_hard_warning_drawn = false;
+
+bool OIL_PRES_soft_warning_cleared = false;
+bool OIL_PRES_soft_warning_drawn = false;
+bool OIL_PRES_hard_warning_cleared = true;
+bool OIL_PRES_hard_warning_drawn = false;
+
+bool EXH_TEMP_soft_warning_cleared = false;
+bool EXH_TEMP_soft_warning_drawn = false;
+bool EXH_TEMP_hard_warning_cleared = true;
+bool EXH_TEMP_hard_warning_drawn = false;
+
+void warningChecks() {
+  //These are to set a flag if the parameter is out of limits
+
+  //Oil Temperature
+  if(OIL_TEMP > 110 && OIL_TEMP < 120)
+  {OIL_TEMP_soft_warning_cleared = false;}
+  else if(OIL_TEMP > 120)
+  {OIL_TEMP_hard_warning_cleared = false;}
+  else
+  {
+    OIL_TEMP_soft_warning_cleared = true;
+    OIL_TEMP_hard_warning_cleared = true;
+  }
+
+  //Water Temperature
+  if(WATER_TEMP > 100 && WATER_TEMP < 105)    //Note: Tune here
+  {WATER_TEMP_soft_warning_cleared = false;}
+  else if(WATER_TEMP > 105)                   //Note: Tune here
+  {WATER_TEMP_hard_warning_cleared = false;}
+  else
+  {
+    WATER_TEMP_soft_warning_cleared = true;
+    WATER_TEMP_hard_warning_cleared = true;
+  }
+
+  //Battery Voltage
+  //TODO: Change these after the decimal is implemented
+  if(BATT_VOLT > 119 && BATT_VOLT < 125)    //Note: Tune here
+  {BATT_VOLT_soft_warning_cleared = false;}
+  else if(BATT_VOLT < 119)                   //Note: Tune here
+  {BATT_VOLT_hard_warning_cleared = false;}
+  else
+  {
+    BATT_VOLT_soft_warning_cleared = true;
+    BATT_VOLT_hard_warning_cleared = true;
+  }
+
+  //Oil Temperature Graphics
+  if(!OIL_TEMP_soft_warning_cleared && !OIL_TEMP_soft_warning_drawn)
+  {
+    tft.fillRect(0,0, 50, 100, YELLOW);
+    tft.fillRect(0,0, 125, 25, YELLOW);
+    tft.fillRect(110,0, 50, 100, YELLOW);
+    tft.fillRect(0,60, 125, 40, YELLOW);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(0, 0);
+    tft.println("OIL TEMP");
+    OIL_TEMP_soft_warning_drawn = true;
+  }
+  else if(!OIL_TEMP_hard_warning_cleared && !OIL_TEMP_hard_warning_drawn)
+  {
+    tft.fillRect(0,0, 50, 100, RED);
+    tft.fillRect(0,0, 125, 25, RED);
+    tft.fillRect(110,0, 50, 100, RED);
+    tft.fillRect(0,60, 125, 40, RED);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(0, 0);
+    tft.println("OIL TEMP");
+    OIL_TEMP_hard_warning_drawn = true;
+  }
+  else if(OIL_TEMP_soft_warning_cleared && OIL_TEMP_soft_warning_drawn)
+  {
+    tft.fillRect(0,0, 50, 100, BLACK);
+    tft.fillRect(0,0, 125, 25, BLACK);
+    tft.fillRect(110,0, 50, 100, BLACK);
+    tft.fillRect(0,60, 125, 40, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(0, 0);
+    tft.println("OIL TEMP");
+    OIL_TEMP_soft_warning_drawn = false;
+  }
+  else if(OIL_TEMP_hard_warning_cleared && OIL_TEMP_hard_warning_drawn)
+  {
+    tft.fillRect(0,0, 50, 100, BLACK);
+    tft.fillRect(0,0, 125, 25, BLACK);
+    tft.fillRect(110,0, 50, 100, BLACK);
+    tft.fillRect(0,60, 125, 40, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(0, 0);
+    tft.println("OIL TEMP");
+    OIL_TEMP_hard_warning_drawn = false;
+  }
+
+  //Water Temperature Graphics
+  if(!WATER_TEMP_soft_warning_cleared && !WATER_TEMP_soft_warning_drawn)
+  {
+    tft.fillRect(320, 0, 160, 25, YELLOW);
+    tft.fillRect(320, 0, 60, 100, YELLOW);
+    tft.fillRect(320, 60, 160, 40, YELLOW);
+    tft.fillRect(440, 0, 40, 100, YELLOW);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(330, 0);
+    tft.println("WTR TEMP");
+    WATER_TEMP_soft_warning_drawn = true;
+  }
+  else if(!WATER_TEMP_hard_warning_cleared && !WATER_TEMP_hard_warning_drawn)
+  {
+    tft.fillRect(320, 0, 160, 25, RED);
+    tft.fillRect(320, 0, 60, 100, RED);
+    tft.fillRect(320, 60, 160, 40, RED);
+    tft.fillRect(440, 0, 40, 100, RED);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(330, 0);
+    tft.println("WTR TEMP");
+    WATER_TEMP_hard_warning_drawn = true;
+  }
+  else if(WATER_TEMP_soft_warning_cleared && WATER_TEMP_soft_warning_drawn)
+  {
+    tft.fillRect(320, 0, 160, 25, BLACK);
+    tft.fillRect(320, 0, 60, 100, BLACK);
+    tft.fillRect(320, 60, 160, 40, BLACK);
+    tft.fillRect(440, 0, 40, 100, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(330, 0);
+    tft.println("WTR TEMP");
+    WATER_TEMP_soft_warning_drawn = false;
+  }
+  else if(WATER_TEMP_hard_warning_cleared && WATER_TEMP_hard_warning_drawn)
+  {
+    tft.fillRect(320, 0, 160, 25, BLACK);
+    tft.fillRect(320, 0, 60, 100, BLACK);
+    tft.fillRect(320, 60, 160, 40, BLACK);
+    tft.fillRect(440, 0, 40, 100, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(3);
+    tft.setCursor(330, 0);
+    tft.println("WTR TEMP");
+    WATER_TEMP_hard_warning_drawn = false;
+  }
+
+  //Battery Voltage Graphics
+  if(!BATT_VOLT_soft_warning_cleared && !BATT_VOLT_soft_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, YELLOW);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    BATT_VOLT_soft_warning_drawn = true;
+  }
+  else if(!BATT_VOLT_hard_warning_cleared && !BATT_VOLT_hard_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, RED);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    BATT_VOLT_hard_warning_drawn = true;
+  }
+  else if(BATT_VOLT_soft_warning_cleared && BATT_VOLT_soft_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    BATT_VOLT_soft_warning_drawn = false;
+  }
+  else if(BATT_VOLT_hard_warning_cleared && BATT_VOLT_hard_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    BATT_VOLT_hard_warning_drawn = false;
+  }
+
+  //Oil Pressure Graphics
+  //TODO: Change these values
+  if(!OIL_PRES_soft_warning_cleared && !OIL_PRES_soft_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, YELLOW);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    OIL_PRES_soft_warning_drawn = true;
+  }
+  else if(!OIL_PRES_hard_warning_cleared && !OIL_PRES_hard_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, RED);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    OIL_PRES_hard_warning_drawn = true;
+  }
+  else if(OIL_PRES_soft_warning_cleared && OIL_PRES_soft_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    OIL_PRES_soft_warning_drawn = false;
+  }
+  else if(OIL_PRES_hard_warning_cleared && OIL_PRES_hard_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    OIL_PRES_hard_warning_drawn = false;
+  }
+
+  //Exhaust Temperature Graphics
+  //TODO: Change these values
+  if(!BATT_VOLT_soft_warning_cleared && !BATT_VOLT_soft_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, YELLOW);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    BATT_VOLT_soft_warning_drawn = true;
+  }
+  else if(!BATT_VOLT_hard_warning_cleared && !BATT_VOLT_hard_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, RED);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    BATT_VOLT_hard_warning_drawn = true;
+  }
+  else if(BATT_VOLT_soft_warning_cleared && BATT_VOLT_soft_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    BATT_VOLT_soft_warning_drawn = false;
+  }
+  else if(BATT_VOLT_hard_warning_cleared && BATT_VOLT_hard_warning_drawn)
+  {
+    tft.fillRect(0, 100, 70, 70, BLACK);
+    tft.setTextColor(HX8357_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(0, 125);
+    tft.println("BATT");
+    BATT_VOLT_hard_warning_drawn = false;
+  }
+  
+  //Water Fans Graphics
+  if(WATER_FAN_L)
+  {tft.fillRect(395, 135, 20, 20, GREEN);}
+  else
+  {tft.fillRect(395, 135, 20, 20, RED);}
+  if(WATER_FAN_R)
+  {tft.fillRect(443, 135, 20, 20, GREEN);}
+  else
+  {tft.fillRect(443, 135, 20, 20, RED);}
+
+  //Fans Graphics
+  if(FAN_L)
+  {tft.fillRect(395, 275, 20, 20, GREEN);}
+  else
+  {tft.fillRect(395, 275, 20, 20, RED);}
+  if(FAN_R)
+  {tft.fillRect(443, 275, 20, 20, GREEN);}
+  else
+  {tft.fillRect(443, 275, 20, 20, RED);}
+
+  //Fuel Pump Graphics
+  if(FUEL_PUMP)
+  {tft.fillRect(395, 185, 45, 45, GREEN);}
+  else
+  {tft.fillRect(395, 185, 45, 45, RED);}
+}
+
 void updateDriverScreen() {
   /*
    * CHECKLIST
@@ -283,13 +601,17 @@ void updateDriverScreen() {
    * Make sure the values are associated with the correct labels. The numbers update and the
    * labels are in different functions.
    */
+
+  
   drawDivides();
+  warningChecks();
+  
   //Left Column
   replaceNum(OIL_TEMP  , prev_OIL_TEMP  , 0  , 30 , 3, true);
-  //replaceNum(RPM     , prev_RPM       , 150, 120, 5, true); //FIX: Problem with the RPM Numbers
-  //replaceNum(BATT_VOLT , prev_BATT_VOLT , 0  , 120, 3, true); //Change to include the decimal place
-  //replaceNum(OIL_PRES  , prev_OIL_PRES  , 0  , 190, 3, true);
-  //replaceNum(EXH_TEMP  , prev_EXH_TEMP  , 0  , 260, 3, true);
+  replaceNum(RPM     , prev_RPM       , 100, 118, 6, true); //FIX: Problem with the RPM Numbers
+  replaceNum(BATT_VOLT , prev_BATT_VOLT , 20  , 120, 3, true); //Change to include the decimal place
+  replaceNum(OIL_PRES  , prev_OIL_PRES  , 20  , 190, 3, true);
+  replaceNum(EXH_TEMP  , prev_EXH_TEMP  , 20  , 270, 3, true);
 
   //Right Column
   replaceNum(WATER_TEMP, prev_WATER_TEMP, 330, 30 , 3, true);
@@ -310,8 +632,8 @@ void updateTime() {
   TIME_SECOND = (timeNow) % 60000 / 1000;
   TIME_MINUTE = (timeNow) % 3600000 / 60000;
 
-  Serial.print("Second:");Serial.println(TIME_SECOND, DEC);
-  Serial.print("Minute:");Serial.println(TIME_MINUTE, DEC);
+  //Serial.print("Second:");Serial.println(TIME_SECOND, DEC);
+  //Serial.print("Minute:");Serial.println(TIME_MINUTE, DEC);
 }
 
 void updatePowertrainScreen() {
@@ -388,7 +710,7 @@ void drawDriverScreen() {
   tft.setCursor(0, 290);
   tft.println("TEMP");
   
-  tft.setCursor(330, 270);
+  tft.setCursor(330, 280);
   tft.println("FAN");
   tft.setCursor(400, 250);
   tft.println("L   R");
@@ -525,6 +847,12 @@ void replaceNum(int curr, int prev, int x, int y, int numSize, int isBlack) {
     case 3:
       numWidth = 18;
       break;
+    case 4:
+      numWidth = 24;
+      break;
+    case 5:
+      numWidth = 30;
+      break;
     case 6:
       numWidth = 36;
       break;
@@ -568,7 +896,7 @@ void replaceNum(int curr, int prev, int x, int y, int numSize, int isBlack) {
   int diff = prevNumOffset - currNumOffset;
   for (int i = 0; i < prevNumOffset; i++) {
     tft.setCursor(x + (i * numWidth), y);
-    tft.print(0, DEC);
+    //tft.print(0, DEC);
   }
 
   //Printing
@@ -605,15 +933,59 @@ void replaceNum(int curr, int prev, int x, int y, int numSize, int isBlack) {
 }
 
 // Screen test functions
+  int OIL_TEMP_value = 1;
+  int WATER_TEMP_value = 1;
+  int BATT_VOLT_value = 1;
+  int EXH_TEMP_value = 1;
+  
 void test_change_all_curr() {
   RPM = abs(RPM + random(-20, 21));
-  WATER_TEMP = abs(WATER_TEMP + random(-3, 4));
+  //WATER_TEMP = abs(WATER_TEMP + random(-3, 4));
+
+  if(WATER_TEMP > 120){
+    WATER_TEMP_value = -1;
+    WATER_FAN_L = true;
+    WATER_FAN_R = false;
+    FAN_L = false;
+    FAN_R = true;
+    FUEL_PUMP = false;
+    }
+  else if(WATER_TEMP < 90){
+    WATER_TEMP_value =  1;
+    WATER_FAN_L = false;
+    WATER_FAN_R = true;
+    FAN_L = true;
+    FAN_R = false;
+    FUEL_PUMP = true;
+    }
+  WATER_TEMP = WATER_TEMP + WATER_TEMP_value;
+
+  if(BATT_VOLT > 130){
+    BATT_VOLT_value = -1;}
+  else if(BATT_VOLT < 100){
+    BATT_VOLT_value =  1;}
+  BATT_VOLT = BATT_VOLT + BATT_VOLT_value;
+  
   SPEED = abs(SPEED + random(-10, 11));
-  OIL_TEMP = abs(OIL_TEMP + random(-5, 6));
-  OIL_PRES = abs(OIL_PRES + random(-5, 6));
+  //OIL_TEMP = abs(OIL_TEMP + random(-5, 6));
+
+  if(OIL_TEMP > 150){
+    OIL_TEMP_value = -1;}
+  else if(OIL_TEMP < 90){
+    OIL_TEMP_value =  1;}
+  OIL_TEMP = OIL_TEMP + OIL_TEMP_value;
+  
+  OIL_PRES = abs(OIL_PRES + random(-5, 6));  
   MAP = abs(MAP + random(-8, 9));
   AFR = abs(AFR + random(-8, 9));
-  EXH_TEMP = abs(EXH_TEMP + random(-8, 9));
+  //EXH_TEMP = abs(EXH_TEMP + random(-8, 9));
+
+  if(EXH_TEMP > 150){
+    EXH_TEMP_value = -1;}
+  else if(EXH_TEMP < 90){
+    EXH_TEMP_value =  1;}
+  EXH_TEMP = EXH_TEMP + EXH_TEMP_value;
+  
   WATER_PRES_1 = abs(WATER_PRES_1 + random(-3, 4));
   WATER_PRES_2 = abs(WATER_PRES_2 + random(-3, 4));
   FAN_1 = abs(FAN_1 + random(-3, 4));
@@ -632,6 +1004,7 @@ void test_change_all_prev() {
   prev_RPM = RPM;
   prev_WATER_TEMP = WATER_TEMP;
   prev_SPEED = SPEED;
+  prev_BATT_VOLT = BATT_VOLT;
   prev_OIL_TEMP = OIL_TEMP;
   prev_OIL_PRES = OIL_PRES;
   prev_MAP = MAP;
